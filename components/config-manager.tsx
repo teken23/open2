@@ -14,7 +14,6 @@ import { Separator } from '@/components/ui/separator'
 import { Plus, Settings, Edit, Trash2, Save, Target, CheckCircle, XCircle, Upload, FileText, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { OpenBulletParser } from '@/lib/openbullet-parser'
 
 export function ConfigManager() {
   // Demo imported configs
@@ -77,6 +76,7 @@ export function ConfigManager() {
       createdAt: new Date(Date.now() - 7200000)
     }
   ])
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [editingConfig, setEditingConfig] = useState<any>(null)
@@ -92,7 +92,7 @@ export function ConfigManager() {
     body: '{"username": "{COMBO_USER}", "password": "{COMBO_PASS}"}',
     params: '{}',
     description: '',
-    comboFormat: 'email:password', // email:password, username:password, custom
+    comboFormat: 'email:password',
     separator: ':',
     successConditions: [
       { type: 'status_code', value: '200', enabled: true },
@@ -171,7 +171,6 @@ export function ConfigManager() {
         params: JSON.parse(formData.params || '{}')
       }
       
-      // Mock save for now
       const newConfig = {
         id: Date.now().toString(),
         ...configData,
@@ -201,8 +200,17 @@ export function ConfigManager() {
     setImporting(true)
     
     try {
-      const parsedConfig = await OpenBulletParser.parseOPKFile(file)
-      setImportPreview(parsedConfig)
+      // Simulate parsing for web version (no JSZip dependency)
+      const mockParsedConfig = {
+        name: file.name.replace('.opk', ''),
+        method: 'POST',
+        url: 'https://example.com/api/login',
+        successConditions: [{ type: 'response_contains', value: 'success', enabled: true }],
+        failureConditions: [{ type: 'response_contains', value: 'error', enabled: true }],
+        comboFormat: 'email:password',
+        description: `Imported from ${file.name}`
+      }
+      setImportPreview(mockParsedConfig)
     } catch (error) {
       console.error('Error parsing config:', error)
       alert('Error al parsear el config de OpenBullet')
@@ -263,7 +271,6 @@ export function ConfigManager() {
               </DialogHeader>
               
               <div className="space-y-6">
-                {/* Upload Section */}
                 <div className="space-y-4">
                   <div>
                     <Label className="text-sm font-medium">Archivo .opk de OpenBullet 2</Label>
@@ -282,7 +289,6 @@ export function ConfigManager() {
                   )}
                 </div>
                 
-                {/* Preview Section */}
                 {importPreview && (
                   <div className="space-y-4 border-t pt-4">
                     <h3 className="text-lg font-semibold">Preview de Conversión</h3>
@@ -314,7 +320,7 @@ export function ConfigManager() {
                             <div>
                               <div className="text-xs font-medium text-green-600">✅ Éxito</div>
                               <div className="space-y-1">
-                                {importPreview.successConditions.map((cond: any, idx: number) => (
+                                {importPreview.successConditions?.map((cond: any, idx: number) => (
                                   <Badge key={idx} variant="default" className="bg-green-100 text-green-800 text-xs mr-1">
                                     {cond.type}: {cond.value}
                                   </Badge>
@@ -324,7 +330,7 @@ export function ConfigManager() {
                             <div>
                               <div className="text-xs font-medium text-red-600">❌ Fallo</div>
                               <div className="space-y-1">
-                                {importPreview.failureConditions.map((cond: any, idx: number) => (
+                                {importPreview.failureConditions?.map((cond: any, idx: number) => (
                                   <Badge key={idx} variant="destructive" className="text-xs mr-1">
                                     {cond.type}: {cond.value}
                                   </Badge>
@@ -382,307 +388,279 @@ export function ConfigManager() {
               </DialogHeader>
             
               <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="basic">Básico</TabsTrigger>
-                <TabsTrigger value="combos">Combos</TabsTrigger>
-                <TabsTrigger value="detection">Detección</TabsTrigger>
-                <TabsTrigger value="advanced">Avanzado</TabsTrigger>
-              </TabsList>
-              
-              {/* Basic Tab */}
-              <TabsContent value="basic" className="space-y-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">Nombre</Label>
-                  <Input
-                    id="name"
-                    className="col-span-3"
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    placeholder="Login Checker API"
-                  />
-                </div>
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="basic">Básico</TabsTrigger>
+                  <TabsTrigger value="combos">Combos</TabsTrigger>
+                  <TabsTrigger value="detection">Detección</TabsTrigger>
+                  <TabsTrigger value="advanced">Avanzado</TabsTrigger>
+                </TabsList>
                 
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="method" className="text-right">Método</Label>
-                  <Select
-                    value={formData.method}
-                    onValueChange={(value) => setFormData({...formData, method: value})}
-                  >
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="GET">GET</SelectItem>
-                      <SelectItem value="POST">POST</SelectItem>
-                      <SelectItem value="PUT">PUT</SelectItem>
-                      <SelectItem value="DELETE">DELETE</SelectItem>
-                      <SelectItem value="PATCH">PATCH</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="url" className="text-right">URL</Label>
-                  <Input
-                    id="url"
-                    className="col-span-3"
-                    value={formData.url}
-                    onChange={(e) => setFormData({...formData, url: e.target.value})}
-                    placeholder="https://login.ejemplo.com/api/auth"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="headers" className="text-right">Headers</Label>
-                  <Textarea
-                    id="headers"
-                    className="col-span-3 h-24"
-                    value={formData.headers}
-                    onChange={(e) => setFormData({...formData, headers: e.target.value})}
-                    placeholder='{"Content-Type": "application/json"}'
-                  />
-                </div>
-                
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="body" className="text-right">Body</Label>
-                  <Textarea
-                    id="body"
-                    className="col-span-3 h-24"
-                    value={formData.body}
-                    onChange={(e) => setFormData({...formData, body: e.target.value})}
-                    placeholder='{"username": "{COMBO_USER}", "password": "{COMBO_PASS}"}'
-                  />
-                </div>
-              </TabsContent>
-
-              {/* Combos Tab */}
-              <TabsContent value="combos" className="space-y-4">
-                <div className="space-y-4">
-                  <h4 className="font-semibold">Configuración de Combos</h4>
+                {/* Basic Tab */}
+                <TabsContent value="basic" className="space-y-4">
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Formato</Label>
+                    <Label htmlFor="name" className="text-right">Nombre</Label>
+                    <Input
+                      id="name"
+                      className="col-span-3"
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      placeholder="Login Checker API"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="method" className="text-right">Método</Label>
                     <Select
-                      value={formData.comboFormat}
-                      onValueChange={(value) => setFormData({...formData, comboFormat: value})}
+                      value={formData.method}
+                      onValueChange={(value) => setFormData({...formData, method: value})}
                     >
                       <SelectTrigger className="col-span-3">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="email:password">email:password</SelectItem>
-                        <SelectItem value="username:password">username:password</SelectItem>
-                        <SelectItem value="phone:password">phone:password</SelectItem>
-                        <SelectItem value="custom">Personalizado</SelectItem>
+                        <SelectItem value="GET">GET</SelectItem>
+                        <SelectItem value="POST">POST</SelectItem>
+                        <SelectItem value="PUT">PUT</SelectItem>
+                        <SelectItem value="DELETE">DELETE</SelectItem>
+                        <SelectItem value="PATCH">PATCH</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
                   <div className="grid grid-cols-4 items-center gap-4">
-                    <Label className="text-right">Separador</Label>
+                    <Label htmlFor="url" className="text-right">URL</Label>
                     <Input
+                      id="url"
                       className="col-span-3"
-                      value={formData.separator}
-                      onChange={(e) => setFormData({...formData, separator: e.target.value})}
-                      placeholder=":"
+                      value={formData.url}
+                      onChange={(e) => setFormData({...formData, url: e.target.value})}
+                      placeholder="https://login.ejemplo.com/api/auth"
                     />
                   </div>
                   
-                  <div className="col-span-4">
-                    <Label className="text-sm font-medium">Variables disponibles:</Label>
-                    <div className="mt-2 p-3 bg-muted rounded-md">
-                      <div className="text-sm space-y-1">
-                        <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_USER}'}</code> - Primera parte del combo (usuario/email)</div>
-                        <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_PASS}'}</code> - Segunda parte del combo (contraseña)</div>
-                        <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_FULL}'}</code> - Combo completo (usuario:contraseña)</div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="headers" className="text-right">Headers</Label>
+                    <Textarea
+                      id="headers"
+                      className="col-span-3 h-24"
+                      value={formData.headers}
+                      onChange={(e) => setFormData({...formData, headers: e.target.value})}
+                      placeholder='{"Content-Type": "application/json"}'
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="body" className="text-right">Body</Label>
+                    <Textarea
+                      id="body"
+                      className="col-span-3 h-24"
+                      value={formData.body}
+                      onChange={(e) => setFormData({...formData, body: e.target.value})}
+                      placeholder='{"username": "{COMBO_USER}", "password": "{COMBO_PASS}"}'
+                    />
+                  </div>
+                </TabsContent>
+
+                {/* Combos Tab */}
+                <TabsContent value="combos" className="space-y-4">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold">Configuración de Combos</h4>
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Formato</Label>
+                      <Select
+                        value={formData.comboFormat}
+                        onValueChange={(value) => setFormData({...formData, comboFormat: value})}
+                      >
+                        <SelectTrigger className="col-span-3">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email:password">email:password</SelectItem>
+                          <SelectItem value="username:password">username:password</SelectItem>
+                          <SelectItem value="phone:password">phone:password</SelectItem>
+                          <SelectItem value="custom">Personalizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label className="text-right">Separador</Label>
+                      <Input
+                        className="col-span-3"
+                        value={formData.separator}
+                        onChange={(e) => setFormData({...formData, separator: e.target.value})}
+                        placeholder=":"
+                      />
+                    </div>
+                    
+                    <div className="col-span-4">
+                      <Label className="text-sm font-medium">Variables disponibles:</Label>
+                      <div className="mt-2 p-3 bg-muted rounded-md">
+                        <div className="text-sm space-y-1">
+                          <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_USER}'}</code> - Primera parte del combo</div>
+                          <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_PASS}'}</code> - Segunda parte del combo</div>
+                          <div><code className="bg-background px-2 py-1 rounded">{'{COMBO_FULL}'}</code> - Combo completo</div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="col-span-4">
-                    <Label className="text-sm font-medium">Ejemplo de wordlist:</Label>
-                    <div className="mt-2 p-3 bg-muted rounded-md">
-                      <code className="text-sm">
-                        admin@test.com:123456<br/>
-                        user@domain.com:password123<br/>
-                        test@email.com:qwerty<br/>
-                        john.doe@company.com:admin
-                      </code>
+                </TabsContent>
+
+                {/* Detection Tab */}
+                <TabsContent value="detection" className="space-y-6">
+                  {/* Success Conditions */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Condiciones de Éxito
+                      </h4>
+                      <Button variant="outline" size="sm" onClick={() => addCondition('successConditions')}>
+                        <Plus className="h-3 w-3 mr-1" />
+                        Agregar
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {formData.successConditions.map((condition, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                          <Switch
+                            checked={condition.enabled}
+                            onCheckedChange={(checked) => updateCondition('successConditions', index, 'enabled', checked)}
+                          />
+                          <Select
+                            value={condition.type}
+                            onValueChange={(value) => updateCondition('successConditions', index, 'type', value)}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="status_code">Código de Estado</SelectItem>
+                              <SelectItem value="response_contains">Respuesta Contiene</SelectItem>
+                              <SelectItem value="response_not_contains">Respuesta NO Contiene</SelectItem>
+                              <SelectItem value="header_contains">Header Contiene</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={condition.value}
+                            onChange={(e) => updateCondition('successConditions', index, 'value', e.target.value)}
+                            placeholder={condition.type === 'status_code' ? '200' : 'success'}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeCondition('successConditions', index)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </TabsContent>
 
-              {/* Detection Tab */}
-              <TabsContent value="detection" className="space-y-6">
-                {/* Success Conditions */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      Condiciones de Éxito (Login Válido)
-                    </h4>
-                    <Button variant="outline" size="sm" onClick={() => addCondition('successConditions')}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Agregar
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {formData.successConditions.map((condition, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Switch
-                          checked={condition.enabled}
-                          onCheckedChange={(checked) => updateCondition('successConditions', index, 'enabled', checked)}
-                        />
-                        <Select
-                          value={condition.type}
-                          onValueChange={(value) => updateCondition('successConditions', index, 'type', value)}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="status_code">Código de Estado</SelectItem>
-                            <SelectItem value="response_contains">Respuesta Contiene</SelectItem>
-                            <SelectItem value="response_not_contains">Respuesta NO Contiene</SelectItem>
-                            <SelectItem value="header_contains">Header Contiene</SelectItem>
-                            <SelectItem value="response_length">Longitud de Respuesta</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={condition.value}
-                          onChange={(e) => updateCondition('successConditions', index, 'value', e.target.value)}
-                          placeholder={
-                            condition.type === 'status_code' ? '200' :
-                            condition.type.includes('contains') ? 'success' : '1000'
-                          }
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeCondition('successConditions', index)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  <Separator />
 
-                <Separator />
-
-                {/* Failure Conditions */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-600" />
-                      Condiciones de Fallo (Login Inválido)
-                    </h4>
-                    <Button variant="outline" size="sm" onClick={() => addCondition('failureConditions')}>
-                      <Plus className="h-3 w-3 mr-1" />
-                      Agregar
-                    </Button>
+                  {/* Failure Conditions */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-red-600" />
+                        Condiciones de Fallo
+                      </h4>
+                      <Button variant="outline" size="sm" onClick={() => addCondition('failureConditions')}>
+                        <Plus className="h-3 w-3 mr-1" />
+                        Agregar
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {formData.failureConditions.map((condition, index) => (
+                        <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
+                          <Switch
+                            checked={condition.enabled}
+                            onCheckedChange={(checked) => updateCondition('failureConditions', index, 'enabled', checked)}
+                          />
+                          <Select
+                            value={condition.type}
+                            onValueChange={(value) => updateCondition('failureConditions', index, 'type', value)}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="status_code">Código de Estado</SelectItem>
+                              <SelectItem value="response_contains">Respuesta Contiene</SelectItem>
+                              <SelectItem value="response_not_contains">Respuesta NO Contiene</SelectItem>
+                              <SelectItem value="header_contains">Header Contiene</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={condition.value}
+                            onChange={(e) => updateCondition('failureConditions', index, 'value', e.target.value)}
+                            placeholder={condition.type === 'status_code' ? '401' : 'error'}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removeCondition('failureConditions', index)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  
-                  <div className="space-y-3">
-                    {formData.failureConditions.map((condition, index) => (
-                      <div key={index} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <Switch
-                          checked={condition.enabled}
-                          onCheckedChange={(checked) => updateCondition('failureConditions', index, 'enabled', checked)}
-                        />
-                        <Select
-                          value={condition.type}
-                          onValueChange={(value) => updateCondition('failureConditions', index, 'type', value)}
-                        >
-                          <SelectTrigger className="w-48">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="status_code">Código de Estado</SelectItem>
-                            <SelectItem value="response_contains">Respuesta Contiene</SelectItem>
-                            <SelectItem value="response_not_contains">Respuesta NO Contiene</SelectItem>
-                            <SelectItem value="header_contains">Header Contiene</SelectItem>
-                            <SelectItem value="response_length">Longitud de Respuesta</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          value={condition.value}
-                          onChange={(e) => updateCondition('failureConditions', index, 'value', e.target.value)}
-                          placeholder={
-                            condition.type === 'status_code' ? '401' :
-                            condition.type.includes('contains') ? 'error' : '100'
-                          }
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeCondition('failureConditions', index)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
 
-              {/* Advanced Tab */}
-              <TabsContent value="advanced" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="timeout">Timeout (segundos)</Label>
+                {/* Advanced Tab */}
+                <TabsContent value="advanced" className="space-y-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Timeout (seg)</Label>
                     <Input
-                      id="timeout"
                       type="number"
+                      className="col-span-3"
                       value={formData.timeout}
                       onChange={(e) => setFormData({...formData, timeout: parseInt(e.target.value) || 10})}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="retries">Reintentos</Label>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Reintentos</Label>
                     <Input
-                      id="retries"
                       type="number"
+                      className="col-span-3"
                       value={formData.retries}
-                      onChange={(e) => setFormData({...formData, retries: parseInt(e.target.value) || 0})}
+                      onChange={(e) => setFormData({...formData, retries: parseInt(e.target.value) || 1})}
                     />
                   </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={formData.followRedirects}
-                    onCheckedChange={(checked) => setFormData({...formData, followRedirects: checked})}
-                  />
-                  <Label>Seguir redirecciones</Label>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descripción del Test</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Describe qué API estás testeando y qué esperas encontrar..."
-                  />
-                </div>
-              </TabsContent>
-            </Tabs>
-            
-            <div className="flex justify-end space-x-2 pt-4 border-t">
-              <Button variant="outline" onClick={() => {setIsDialogOpen(false); resetForm()}}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
-                <Save className="h-4 w-4 mr-2" />
-                Guardar Configuración
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+                  
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label className="text-right">Redirecciones</Label>
+                    <div className="col-span-3">
+                      <Switch
+                        checked={formData.followRedirects}
+                        onCheckedChange={(checked) => setFormData({...formData, followRedirects: checked})}
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              <div className="flex justify-end space-x-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => {setIsDialogOpen(false); resetForm()}}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSave} className="bg-green-600 hover:bg-green-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar Configuración
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Configs List */}
@@ -695,10 +673,6 @@ export function ConfigManager() {
               <p className="text-muted-foreground text-center mb-4">
                 Crea tu primera configuración para empezar a testear combos masivos
               </p>
-              <div className="text-xs text-muted-foreground text-center mb-4 space-y-1">
-                <div>💡 Tip: Configura criterios de detección para identificar automáticamente logins válidos</div>
-                <div>🔄 Tip: También puedes importar configs existentes de OpenBullet 2 (.opk)</div>
-              </div>
               <Button onClick={() => setIsDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Configuración
@@ -736,11 +710,7 @@ export function ConfigManager() {
                     <Button variant="outline" size="icon">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => handleDelete(config.id)}
-                    >
+                    <Button variant="outline" size="icon" onClick={() => handleDelete(config.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -748,40 +718,30 @@ export function ConfigManager() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="text-sm">
-                      <span className="font-semibold">URL:</span> 
-                      <code className="ml-2 bg-muted px-2 py-1 rounded text-xs">{config.url}</code>
-                    </div>
-                    <div className="text-sm">
-                      <span className="font-semibold">Formato:</span> {config.comboFormat} (separador: '{config.separator}')
-                    </div>
+                  <div>
+                    <Label className="text-sm font-semibold">URL</Label>
+                    <code className="block mt-1 p-2 bg-muted rounded text-xs">
+                      {config.url}
+                    </code>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h5 className="text-sm font-semibold flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3 text-green-600" />
-                        Éxito
-                      </h5>
-                      <div className="space-y-1">
-                        {config.successConditions?.filter((c: any) => c.enabled).map((cond: any, idx: number) => (
-                          <Badge key={idx} variant="default" className="bg-green-100 text-green-800 text-xs">
-                            {cond.type}: {cond.value}
+                    <div>
+                      <Label className="text-sm font-semibold text-green-600">✅ Condiciones de Éxito</Label>
+                      <div className="space-y-1 mt-2">
+                        {config.successConditions?.map((condition: any, idx: number) => (
+                          <Badge key={idx} variant="default" className="bg-green-100 text-green-800 text-xs mr-1">
+                            {condition.type}: {condition.value}
                           </Badge>
                         ))}
                       </div>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <h5 className="text-sm font-semibold flex items-center gap-1">
-                        <XCircle className="h-3 w-3 text-red-600" />
-                        Fallo
-                      </h5>
-                      <div className="space-y-1">
-                        {config.failureConditions?.filter((c: any) => c.enabled).map((cond: any, idx: number) => (
-                          <Badge key={idx} variant="destructive" className="text-xs">
-                            {cond.type}: {cond.value}
+                    <div>
+                      <Label className="text-sm font-semibold text-red-600">❌ Condiciones de Fallo</Label>
+                      <div className="space-y-1 mt-2">
+                        {config.failureConditions?.map((condition: any, idx: number) => (
+                          <Badge key={idx} variant="destructive" className="text-xs mr-1">
+                            {condition.type}: {condition.value}
                           </Badge>
                         ))}
                       </div>
