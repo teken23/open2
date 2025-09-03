@@ -1,0 +1,116 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/api_tester/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Config {
+  id          String   @id @default(cuid())
+  name        String
+  method      String   // GET, POST, PUT, etc.
+  url         String
+  headers     Json?    // Key-value pairs for headers
+  body        String?  // Request body for POST requests
+  params      Json?    // Query parameters
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  executionSessions ExecutionSession[]
+  @@map("configs")
+}
+
+model Wordlist {
+  id               String   @id @default(cuid())
+  name             String
+  filename         String
+  cloud_storage_path String // S3 key for the uploaded file
+  size             Int      // File size in bytes
+  lineCount        Int?     // Number of lines/entries
+  description      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  executionSessions ExecutionSession[]
+  @@map("wordlists")
+}
+
+model ExecutionSession {
+  id          String            @id @default(cuid())
+  name        String?
+  configId    String
+  wordlistId  String
+  status      ExecutionStatus   @default(PENDING)
+  totalItems  Int               @default(0)
+  processedItems Int            @default(0)
+  successCount Int              @default(0)
+  failureCount Int              @default(0)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  
+  config      Config            @relation(fields: [configId], references: [id], onDelete: Cascade)
+  wordlist    Wordlist          @relation(fields: [wordlistId], references: [id], onDelete: Cascade)
+  results     Result[]
+  @@map("execution_sessions")
+}
+
+model Result {
+  id          String          @id @default(cuid())
+  sessionId   String
+  inputValue  String          // The wordlist entry used
+  status      ResultStatus
+  httpCode    Int?            // HTTP status code
+  responseTime Int?           // Response time in ms
+  responseSize Int?           // Response size in bytes
+  responseHeaders Json?       // Response headers
+  responseBody String?        // Response body (truncated if too large)
+  error       String?         // Error message if failed
+  createdAt   DateTime        @default(now())
+  
+  session     ExecutionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  @@map("results")
+}
+
+model ProxySetting {
+  id        String   @id @default(cuid())
+  name      String
+  host      String
+  port      Int
+  username  String?
+  password  String?
+  type      ProxyType @default(HTTP)
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("proxy_settings")
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ResultStatus {
+  SUCCESS
+  FAILURE
+  ERROR
+}
+
+enum ProxyType {
+  HTTP
+  HTTPS
+  SOCKS4
+  SOCKS5
+}
